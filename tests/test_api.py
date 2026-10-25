@@ -1,3 +1,4 @@
+import pytest
 TARGET = "https://example.com/some/page"
 
 
@@ -58,3 +59,27 @@ def test_stats_counts_clicks(client):
 def test_stats_unknown_code_returns_404(client):
     resp = client.get("/stats/doesnotexist")
     assert resp.status_code == 404
+
+
+def test_custom_alias(client):
+    resp = client.post("/shorten", json={"target_url": TARGET, "alias": "my-link"})
+
+    assert resp.status_code == 201
+    assert resp.json()["code"] == "my-link"
+
+    redirect = client.get("/my-link", follow_redirects=False)
+    assert redirect.headers["location"] == TARGET
+
+
+def test_duplicate_alias_returns_409(client):
+    body = {"target_url": TARGET, "alias": "taken"}
+    client.post("/shorten", json=body)
+
+    resp = client.post("/shorten", json=body)
+    assert resp.status_code == 409
+
+
+@pytest.mark.parametrize("bad_alias", ["ab", "has space", "bad!chars", "docs"])
+def test_invalid_alias_returns_422(client, bad_alias):
+    resp = client.post("/shorten", json={"target_url": TARGET, "alias": bad_alias})
+    assert resp.status_code == 422
