@@ -43,3 +43,18 @@ def test_code_collision_retries(client, monkeypatch):
 
     assert first["code"] == "dup1"
     assert second["code"] == "dup2"
+
+def test_stats_counts_clicks(client):
+    code = client.post("/shorten", json={"target_url": TARGET}).json()["code"]
+
+    client.get(f"/{code}", follow_redirects=False)
+    client.get(f"/{code}", follow_redirects=False)
+
+    resp = client.get(f"/stats/{code}")
+    assert resp.status_code == 200
+    assert resp.json()["clicks"] == 2
+
+
+def test_stats_unknown_code_returns_404(client):
+    resp = client.get("/stats/doesnotexist")
+    assert resp.status_code == 404

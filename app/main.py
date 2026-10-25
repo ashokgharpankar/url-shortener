@@ -45,3 +45,11 @@ def follow(code: str, db: Session = Depends(get_db)):
     crud.increment_clicks(db, url.id)
     return RedirectResponse(url.target_url,
                             status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+
+@app.get("/stats/{code}", response_model=URLInfo)
+def stats(code: str, db: Session = Depends(get_db)):
+    url = crud.get_by_code(db, code)
+    if url is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Short URL not found")
+    return to_info(url)
