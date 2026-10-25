@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>URL Shortener</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f6f7f9;
+      margin: 0;
+    }
+
+    main {
+      max-width: 520px;
+      margin: 64px auto;
+      padding: 0 16px;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      font-size: 14px;
+      color: #444;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      border: 0;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .error {
+      color: #b91c1c;
+    }
+
+    .result {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 16px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 6px;
+    }
+
+    .result a {
+      flex: 1;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>URL Shortener</h1>
+
+    <form method="post">
+      <label>Long URL
+        <input type="url" name="target_url" required
+          value="{{ target_url or '' }}"
+          placeholder="https://example.com/very/long/link">
+      </label>
+      <label>Custom alias (optional)
+        <input name="alias" value="{{ alias or '' }}" placeholder="my-link">
+      </label>
+      <button type="submit">Shorten</button>
+    </form>
+
+    {% if error %}
+    <p class="error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% if result %}
+    <div class="result">
+      <a href="{{ result.short_url }}">{{ result.short_url }}</a>
+      <button type="button" data-url="{{ result.short_url }}"
+        onclick="navigator.clipboard.writeText(this.dataset.url)">Copy</button>
+    </div>
+    {% endif %}
+  </main>
+</body>
+
+</html>

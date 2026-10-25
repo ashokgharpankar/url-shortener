@@ -1,3 +1,9 @@
+from pathlib import Path
+
+from fastapi import Form, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -18,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="URL Shortener", lifespan=lifespan)
-
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 def to_info(url: URL) -> URLInfo:
     return URLInfo(
@@ -33,8 +39,47 @@ def to_info(url: URL) -> URLInfo:
 @app.post("/shorten", response_model=URLInfo,
           status_code=status.HTTP_201_CREATED)
 def shorten(payload: URLCreate, db: Session = Depends(get_db)):
-    url = crud.create_url(db, str(payload.target_url), settings.code_length)
+    try:
+        url = crud.create_url(
+            db,
+            str(payload.target_url),
+            settings.code_length,
+            alias=payload.alias,
+        )
+    except crud.AliasTakenError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Alias already in use")
     return to_info(url)
+
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse(request, "index.html")
+
+
+@app.post("/", response_class=HTMLResponse)
+def home_submit(
+    request: Request,
+    target_url: str = Form(...),
+    alias: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    context = {"target_url": target_url, "alias": alias}
+    try:
+        # Reuse the API's validation rules; an empty box means "no alias".
+        payload = URLCreate(target_url=target_url, alias=alias or None)
+        url = crud.create_url(db, str(payload.target_url),
+                              settings.code_length, alias=payload.alias)
+    except ValidationError as e:
+        context["error"] = e.errors()[0]["msg"]
+        return templates.TemplateResponse(request, "index.html", context,
+                                          status_code=422)
+    except crud.AliasTakenError:
+        context["error"] = "That alias is already in use."
+        return templates.TemplateResponse(request, "index.html", context,
+                                          status_code=409)
+
+    context["result"] = to_info(url)
+    return templates.TemplateResponse(request, "index.html", context)
 
 
 @app.get("/{code}")
